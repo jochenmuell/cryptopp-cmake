@@ -1419,7 +1419,7 @@ endif()
 # gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib
 # comdlg32.lib
 if(WIN32)
-    target_link_libraries(cryptopp kernel32)
+    target_link_libraries(cryptopp kernel32 bcrypt.lib)
 endif()
 
 find_package(Threads)

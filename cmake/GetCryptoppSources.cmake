@@ -11,6 +11,8 @@ set(version_underscore
 if(GIT_FOUND)
     if(${CRYPTOPP_USE_MASTER_BRANCH})
         set(source_location "master")
+    elseif(CRYPTOPP_USE_REV)
+        set(source_location ${CRYPTOPP_REV})
     else()
         set(source_location "CRYPTOPP_${version_underscore}")
     endif()
