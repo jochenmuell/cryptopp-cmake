@@ -23,7 +23,13 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # options, based on what we are doing.
 set(CMAKE_USER_MAKE_RULES_OVERRIDE "ResetInitialCompilerOptions")
 
-add_compile_options(-mssse3 -mavx2 -msse4.2 -mpclmul -maes -msha)
+add_compile_options(
+    $<$<COMPILE_LANGUAGE:CXX>:-mssse3>
+    $<$<COMPILE_LANGUAGE:CXX>:-mavx2>
+    $<$<COMPILE_LANGUAGE:CXX>:-msse4.2>
+    $<$<COMPILE_LANGUAGE:CXX>:-mpclmul>
+    $<$<COMPILE_LANGUAGE:CXX>:-maes>
+    $<$<COMPILE_LANGUAGE:CXX>:-msha>)
 
 # ------------------------------------------------------------------------------
 # Project description and (meta) information
