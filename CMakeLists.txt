@@ -5,7 +5,7 @@
 # ===-----------------------------------------------------------------------===#
 
 set(CRYPTOPP_USE_REV True)
-set(CRYPTOPP_REV df5198a)
+set(CRYPTOPP_REV 56ee213e9)
 
 # ------------------------------------------------------------------------------
 # CMake basic options
@@ -30,7 +30,6 @@ add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX>:-mpclmul>
     $<$<COMPILE_LANGUAGE:CXX>:-maes>
     $<$<COMPILE_LANGUAGE:CXX>:-msha>)
-
 # ------------------------------------------------------------------------------
 # Project description and (meta) information
 # ------------------------------------------------------------------------------
