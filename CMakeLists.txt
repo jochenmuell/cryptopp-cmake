@@ -5,7 +5,7 @@
 # ===-----------------------------------------------------------------------===#
 
 set(CRYPTOPP_USE_REV True)
-set(CRYPTOPP_REV 56ee213e9)
+set(CRYPTOPP_REV 0e7fead1689102d4eb6c1acefebf5fa1c6630bb8)
 
 # ------------------------------------------------------------------------------
 # CMake basic options
