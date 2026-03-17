@@ -72,7 +72,7 @@ endif()
 set(CRYPTOPP_COMPILE_DEFINITIONS)
 set(CRYPTOPP_COMPILE_OPTIONS)
 
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
     list(
         APPEND
         CRYPTOPP_COMPILE_OPTIONS
@@ -164,6 +164,9 @@ function(check_compile_link_option opt var prog)
 
     message(STATUS "[cryptopp] Performing Test ${var}")
     set(definitions ${CRYPTOPP_COMPILE_DEFINITIONS})
+    if(MSVC)
+        list(APPEND definitions ${CRYPTOPP_MSVC_COMPILE_DEFINITIONS})
+    endif()
     list(TRANSFORM definitions PREPEND "-D")
     list(APPEND definitions ${opt})
     try_compile(
@@ -323,12 +326,13 @@ endif()
 
 if(MSVC)
     set(CRYPTOPP_MSVC_COMPILE_OPTIONS)
+    set(CRYPTOPP_MSVC_COMPILE_DEFINITIONS)
 
     # TODO: what about ICC and LLVM on Windows?
 
     if(CMAKE_SYSTEM_VERSION MATCHES "10\\.0.*")
         # https://docs.microsoft.com/en-us/cpp/porting/modifying-winver-and-win32-winnt
-        list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "_WIN32_WINNT=0x0A00")
+        list(APPEND CRYPTOPP_MSVC_COMPILE_DEFINITIONS "_WIN32_WINNT=0x0A00")
     endif()
     # winapifamily.h is missing on AppVeyor machines
     include(CheckIncludeFileCXX)
@@ -338,7 +342,9 @@ if(MSVC)
     endif()
 
     list(APPEND CRYPTOPP_MSVC_COMPILE_OPTIONS "/GR")
-    list(APPEND CRYPTOPP_MSVC_COMPILE_OPTIONS "/MP")
+    if (NOT (CMAKE_CXX_COMPILER_ID MATCHES "IntelLLVM"))
+        list(APPEND CRYPTOPP_MSVC_COMPILE_OPTIONS "/MP")
+    endif ()
     list(APPEND CRYPTOPP_MSVC_COMPILE_OPTIONS "/EHsc")
 endif()
 
@@ -743,137 +749,143 @@ endif()
 # Aach32 and Aarch64               #####
 # ##############################################################################
 
-if(CRYPTOPP_ARMV8 AND NOT MSVC)
-    check_compile_link_option(
-      "-DCRYPTOPP_ARM_NEON_HEADER=1"   CRYPTOPP_ARM_NEON_HEADER
-      "${TEST_PROG_DIR}/test_arm_neon_header.cpp"
-    )
-    if(CRYPTOPP_ARM_NEON_HEADER)
+if(CRYPTOPP_ARMV8)
+    if (MSVC)
+        # MSVC doesn't provide the ACLE header
         list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_ARM_NEON_HEADER=1")
-    endif()
-
-    check_compile_link_option(
-      "-DCRYPTOPP_ARM_ACLE_HEADER=1 -march=armv8-a"   CRYPTOPP_ARM_ACLE_HEADER
-      "${TEST_PROG_DIR}/test_arm_acle_header.cpp"
-    )
-    if(CRYPTOPP_ARM_ACLE_HEADER)
-        list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_ARM_ACLE_HEADER=1")
-    endif()
-
-    check_compile_link_option("-march=armv8-a"   CRYPTOPP_ARM_SIMD
-                              "${TEST_PROG_DIR}/test_arm_asimd.cpp"
-    )
-    if(CRYPTOPP_ARM_SIMD)
-        list(APPEND CRYPTOPP_ASIMD_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_ARIA_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_BLAKE2B_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_BLAKE2S_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_CHACHA_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_CHAM_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_LEA_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_NEON_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_SIMON128_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_SPECK128_FLAGS -march=armv8-a)
-        list(APPEND CRYPTOPP_SM4_FLAGS -march=armv8-a)
-
-        check_compile_link_option("-march=armv8-a+crc"     CRYPTOPP_HAVE_ARM_CRC32
-                                  "${TEST_PROG_DIR}/test_arm_crc.cpp"
+        list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_ARM_ACLE_HEADER=0")
+    else()
+        check_compile_link_option(
+          "-DCRYPTOPP_ARM_NEON_HEADER=1"   CRYPTOPP_ARM_NEON_HEADER
+          "${TEST_PROG_DIR}/test_arm_neon_header.cpp"
         )
-        if(CRYPTOPP_HAVE_ARM_CRC32)
-            list(APPEND CRYPTOPP_CRC_FLAGS -march=armv8-a+crc)
-        else()
-            list(
-                APPEND
-                CRYPTOPP_COMPILE_DEFINITIONS
-                "CRYPTOPP_DISABLE_ARM_CRC32=1"
-            )
-        endif()
-
-        check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_AES
-                                  "${TEST_PROG_DIR}/test_arm_aes.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_AES)
-            list(APPEND CRYPTOPP_AES_FLAGS -march=armv8-a+crypto)
-        else()
-            list(
-                APPEND
-                CRYPTOPP_COMPILE_DEFINITIONS
-                "CRYPTOPP_DISABLE_ARM_AES=1"
-            )
-        endif()
-
-        check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_PMULL
-                                  "${TEST_PROG_DIR}/test_arm_pmull.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_PMULL)
-            list(APPEND CRYPTOPP_GCM_FLAGS -march=armv8-a+crypto)
-            list(APPEND CRYPTOPP_GF2N_FLAGS -march=armv8-a+crypto)
-        else()
-            list(
-                APPEND
-                CRYPTOPP_COMPILE_DEFINITIONS
-                "CRYPTOPP_DISABLE_ARM_PMULL=1"
-            )
-        endif()
-
-        check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_SHA1
-                                  "${TEST_PROG_DIR}/test_arm_sha1.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_SHA1)
-            list(APPEND CRYPTOPP_SHA_FLAGS -march=armv8-a+crypto)
-        else()
-            list(
-                APPEND
-                CRYPTOPP_COMPILE_DEFINITIONS
-                "CRYPTOPP_DISABLE_ARM_SHA1=1"
-            )
-        endif()
-
-        check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_SHA2
-                                  "${TEST_PROG_DIR}/test_arm_sha256.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_SHA2)
-            list(APPEND CRYPTOPP_SHA_FLAGS -march=armv8-a+crypto)
-        else()
-            list(
-                APPEND
-                CRYPTOPP_COMPILE_DEFINITIONS
-                "CRYPTOPP_DISABLE_ARM_SHA2=1"
-            )
-        endif()
-
-        check_compile_link_option("-march=armv8.4-a+sm3"     CRYPTOPP_HAVE_ARM_SM3
-                                  "${TEST_PROG_DIR}/test_arm_sm3.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_SM3)
-            list(APPEND CRYPTOPP_SM3_FLAGS -march=armv8.4-a+sm3)
-            list(APPEND CRYPTOPP_SM4_FLAGS -march=armv8.4-a+sm3)
-        else()
-            # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SM3=1")
-            # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SM4=1")
-        endif()
-
-        check_compile_link_option("-march=armv8.4-a+sha3"     CRYPTOPP_HAVE_ARM_SHA3
-                                  "${TEST_PROG_DIR}/test_arm_sha3.cpp"
-        )
-        if(CRYPTOPP_HAVE_ARM_SHA3)
-            list(APPEND CRYPTOPP_SHA3_FLAGS -march=armv8.4-a+sha3)
-        else()
-            # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SHA3=1")
+        if(CRYPTOPP_ARM_NEON_HEADER)
+            list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_ARM_NEON_HEADER=1")
         endif()
 
         check_compile_link_option(
-          "-march=armv8.4-a+sha512"     CRYPTOPP_HAVE_ARM_SHA512
-          "${TEST_PROG_DIR}/test_arm_sha512.cpp"
+          "-DCRYPTOPP_ARM_ACLE_HEADER=1 -march=armv8-a"   CRYPTOPP_ARM_ACLE_HEADER
+          "${TEST_PROG_DIR}/test_arm_acle_header.cpp"
         )
-        if(CRYPTOPP_HAVE_ARM_SHA512)
-            list(APPEND CRYPTOPP_SHA3_FLAGS -march=armv8.4-a+sha512)
-        else()
-            # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS
-            # "CRYPTOPP_DISABLE_ARM_SHA512=1")
+        if(CRYPTOPP_ARM_ACLE_HEADER)
+            list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_ARM_ACLE_HEADER=1")
         endif()
-    else()
-        list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ASM=1")
+
+        check_compile_link_option("-march=armv8-a"   CRYPTOPP_ARM_SIMD
+                                  "${TEST_PROG_DIR}/test_arm_asimd.cpp"
+        )
+        if(CRYPTOPP_ARM_SIMD)
+            list(APPEND CRYPTOPP_ASIMD_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_ARIA_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_BLAKE2B_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_BLAKE2S_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_CHACHA_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_CHAM_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_LEA_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_NEON_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_SIMON128_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_SPECK128_FLAGS -march=armv8-a)
+            list(APPEND CRYPTOPP_SM4_FLAGS -march=armv8-a)
+
+            check_compile_link_option("-march=armv8-a+crc"     CRYPTOPP_HAVE_ARM_CRC32
+                                      "${TEST_PROG_DIR}/test_arm_crc.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_CRC32)
+                list(APPEND CRYPTOPP_CRC_FLAGS -march=armv8-a+crc)
+            else()
+                list(
+                    APPEND
+                    CRYPTOPP_COMPILE_DEFINITIONS
+                    "CRYPTOPP_DISABLE_ARM_CRC32=1"
+                )
+            endif()
+
+            check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_AES
+                                      "${TEST_PROG_DIR}/test_arm_aes.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_AES)
+                list(APPEND CRYPTOPP_AES_FLAGS -march=armv8-a+crypto)
+            else()
+                list(
+                    APPEND
+                    CRYPTOPP_COMPILE_DEFINITIONS
+                    "CRYPTOPP_DISABLE_ARM_AES=1"
+                )
+            endif()
+
+            check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_PMULL
+                                      "${TEST_PROG_DIR}/test_arm_pmull.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_PMULL)
+                list(APPEND CRYPTOPP_GCM_FLAGS -march=armv8-a+crypto)
+                list(APPEND CRYPTOPP_GF2N_FLAGS -march=armv8-a+crypto)
+            else()
+                list(
+                    APPEND
+                    CRYPTOPP_COMPILE_DEFINITIONS
+                    "CRYPTOPP_DISABLE_ARM_PMULL=1"
+                )
+            endif()
+
+            check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_SHA1
+                                      "${TEST_PROG_DIR}/test_arm_sha1.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_SHA1)
+                list(APPEND CRYPTOPP_SHA_FLAGS -march=armv8-a+crypto)
+            else()
+                list(
+                    APPEND
+                    CRYPTOPP_COMPILE_DEFINITIONS
+                    "CRYPTOPP_DISABLE_ARM_SHA1=1"
+                )
+            endif()
+
+            check_compile_link_option("-march=armv8-a+crypto"     CRYPTOPP_HAVE_ARM_SHA2
+                                      "${TEST_PROG_DIR}/test_arm_sha256.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_SHA2)
+                list(APPEND CRYPTOPP_SHA_FLAGS -march=armv8-a+crypto)
+            else()
+                list(
+                    APPEND
+                    CRYPTOPP_COMPILE_DEFINITIONS
+                    "CRYPTOPP_DISABLE_ARM_SHA2=1"
+                )
+            endif()
+
+            check_compile_link_option("-march=armv8.4-a+sm3"     CRYPTOPP_HAVE_ARM_SM3
+                                      "${TEST_PROG_DIR}/test_arm_sm3.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_SM3)
+                list(APPEND CRYPTOPP_SM3_FLAGS -march=armv8.4-a+sm3)
+                list(APPEND CRYPTOPP_SM4_FLAGS -march=armv8.4-a+sm3)
+            else()
+                # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SM3=1")
+                # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SM4=1")
+            endif()
+
+            check_compile_link_option("-march=armv8.4-a+sha3"     CRYPTOPP_HAVE_ARM_SHA3
+                                      "${TEST_PROG_DIR}/test_arm_sha3.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_SHA3)
+                list(APPEND CRYPTOPP_SHA3_FLAGS -march=armv8.4-a+sha3)
+            else()
+                # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ARM_SHA3=1")
+            endif()
+
+            check_compile_link_option(
+              "-march=armv8.4-a+sha512"     CRYPTOPP_HAVE_ARM_SHA512
+              "${TEST_PROG_DIR}/test_arm_sha512.cpp"
+            )
+            if(CRYPTOPP_HAVE_ARM_SHA512)
+                list(APPEND CRYPTOPP_SHA3_FLAGS -march=armv8.4-a+sha512)
+            else()
+                # list(APPEND CRYPTOPP_COMPILE_DEFINITIONS
+                # "CRYPTOPP_DISABLE_ARM_SHA512=1")
+            endif()
+        else()
+            list(APPEND CRYPTOPP_COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ASM=1")
+        endif()
     endif()
 endif()
 
@@ -1328,7 +1340,7 @@ function(cryptopp_set_compile_properties)
         set_property(
             SOURCE ${cxx_file}
             APPEND
-            PROPERTY COMPILE_DEFINITIONS ${CRYPTOPP_COMPILE_DEFINITIONS}
+            PROPERTY COMPILE_DEFINITIONS ${CRYPTOPP_COMPILE_DEFINITIONS} ${CRYPTOPP_MSVC_COMPILE_DEFINITIONS}
         )
     endforeach()
 endfunction()
@@ -1389,6 +1401,7 @@ target_compile_definitions(
     cryptopp
     INTERFACE
         $<INSTALL_INTERFACE:CRYPTOPP_INCLUDE_PREFIX=${CRYPTOPP_INCLUDE_PREFIX}>
+        ${CRYPTOPP_COMPILE_DEFINITIONS}
 )
 cmake_path(GET cryptopp_SOURCE_DIR PARENT_PATH CRYPTOPP_PREFIXED_INCLUDE_DIR)
 if(cryptopp_SOURCE_DIR STREQUAL CRYPTOPP_PREFIXED_INCLUDE_DIR)
@@ -1448,7 +1461,7 @@ if(CRYPTOPP_BUILD_TESTING)
     add_executable(cryptest ${cryptopp_SOURCES_TEST})
     target_link_libraries(cryptest PRIVATE cryptopp::cryptopp)
 
-    set_source_files_properties(
+    set_property(SOURCE
         ${cryptopp_SOURCE_DIR}/bench3.cpp
         ${cryptopp_SOURCE_DIR}/datatest.cpp
         ${cryptopp_SOURCE_DIR}/test.cpp
@@ -1457,7 +1470,7 @@ if(CRYPTOPP_BUILD_TESTING)
         ${cryptopp_SOURCE_DIR}/validat7.cpp
         ${cryptopp_SOURCE_DIR}/validat8.cpp
         ${cryptopp_SOURCE_DIR}/validat9.cpp
-        PROPERTIES
+        APPEND PROPERTY
             COMPILE_DEFINITIONS
                 CRYPTOPP_DATA_DIR="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATAROOTDIR}/cryptopp/"
     )

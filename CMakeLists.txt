@@ -70,7 +70,7 @@ project(
 
 # cmake-format: on
 
-message("=> Project : ${PROJECT_NAME} v${cryptopp-cmake_VERSION}")
+message(STATUS "=> Project : ${PROJECT_NAME} v${cryptopp-cmake_VERSION}")
 
 # ============================================================================
 # Settable options
@@ -300,5 +300,5 @@ endif()
 # Add cryptopp CMake subdirectory
 # ------------------------------------------------------------------------------
 
-message("=> Module : cryptopp")
+message(STATUS "=> Module : cryptopp")
 add_subdirectory(cryptopp)
