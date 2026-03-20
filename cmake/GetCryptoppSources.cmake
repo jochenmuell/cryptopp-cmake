@@ -26,7 +26,7 @@ if(GIT_FOUND)
     )
     fetchcontent_declare(
         cryptopp-pem
-        GIT_REPOSITORY "https://github.com/noloader/cryptopp-pem"
+        GIT_REPOSITORY "https://github.com/jochenmuell/cryptopp-pem"
         QUIET
     )
 else()
